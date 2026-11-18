@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Download, RotateCcw } from 'lucide-react';
 import { useDiary } from '../hooks/useDiary';
 import { useToast } from '../components/Toast';
@@ -13,6 +13,12 @@ export function InfoPage() {
   const toast = useToast();
   const navigate = useNavigate();
   const [confirm, setConfirm] = useState(false);
+  const { hash } = useLocation();
+  const filmRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (hash === '#film') setTimeout(() => filmRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  }, [hash]);
   const hasData = diary.entries.length > 0 || !!diary.patient.petName.trim();
 
   function reset() {
@@ -34,6 +40,24 @@ export function InfoPage() {
   return (
     <div className="space-y-5">
       <h1 className="page-title">Informacje</h1>
+
+      <section ref={filmRef} id="film" className="card space-y-3 scroll-mt-20" aria-labelledby="film-tytul">
+        <h2 id="film-tytul" className="section-title">
+          Film: jak korzystać z dzienniczka (1 min)
+        </h2>
+        <video
+          className="mx-auto max-h-[70dvh] w-full rounded-2xl bg-cream object-contain"
+          src="/video/instrukcja.mp4"
+          poster="/video/instrukcja-okladka.jpg"
+          controls
+          playsInline
+          preload="none"
+        >
+          Twoja przeglądarka nie odtwarza filmów.
+        </video>
+        <p className="text-[13px] text-navy/70">Film nie ma dźwięku – wszystkie wskazówki są w napisach.</p>
+      </section>
+
       <InstructionCard />
       <NotMonitoredNote />
 

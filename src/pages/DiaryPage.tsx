@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight, Moon, Send, Footprints, Pill, TriangleAlert } from 'lucide-react';
+import { ChevronRight, Moon, Send, Footprints, Pill, TriangleAlert, CirclePlay } from 'lucide-react';
 import { useDiary } from '../hooks/useDiary';
 import { useEntryEditor } from '../components/EntryEditor';
 import { Timeline } from '../components/DiaryViews';
@@ -36,6 +36,9 @@ export function DiaryPage() {
       </div>
 
       <InstructionCard />
+      <Link to="/informacje#film" className="-mt-2 flex items-center gap-2 px-1 text-[15px] font-bold text-burgundy underline-offset-4 hover:underline">
+        <CirclePlay className="h-5 w-5" aria-hidden /> Zobacz film: jak korzystać (1 min)
+      </Link>
 
       {patientOk ? (
         <Link to="/dane" className="card flex items-center gap-3 !p-4">
