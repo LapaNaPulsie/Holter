@@ -25,6 +25,7 @@ export function SendPage() {
   const [pdf, setPdf] = useState<File | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [status, setStatus] = useState<Status>(null);
+  const [copied, setCopied] = useState(false);
 
   // PDF przygotowywany z wyprzedzeniem – udostępnianie musi ruszyć od razu po dotknięciu przycisku.
   useEffect(() => {
@@ -65,12 +66,11 @@ export function SendPage() {
   async function sendToDoctor() {
     if (!check.ok) return;
     if (canShare && pdf) {
-      // Adres do schowka – w programie pocztowym wystarczy go wkleić w polu „Do”.
-      void copyText(RECIPIENT_EMAIL);
+      // Udostępnianie musi być jedyną czynnością w tym dotknięciu (iPhone odrzuca je np. po kopiowaniu do schowka).
       // Tylko plik (bez tekstu): część aplikacji pocztowych, np. Gmail, pomija załącznik, gdy dostaje też tekst.
       const res = await shareFile(pdf, model.subject);
       if (res === 'shared') setStatus({ kind: 'shared' });
-      else if (res === 'error' || res === 'unsupported') fallbackMail(pdf);
+      else if (res !== 'cancelled') setStatus({ kind: 'error', text: 'Telefon nie otworzył menu „Udostępnij”. Dotknij „Wyślij do lekarza” jeszcze raz. Jeśli to nie pomoże, użyj opcji „Nie działa? Wyślij ręcznie” poniżej.' });
       return;
     }
     const f = await getPdf();
@@ -84,6 +84,12 @@ export function SendPage() {
     setTimeout(() => {
       window.location.href = mailtoUrl(model.subject, body);
     }, 600);
+  }
+
+  async function copyAddress() {
+    const ok = await copyText(RECIPIENT_EMAIL);
+    setCopied(ok);
+    if (!ok) toast('Nie udało się skopiować – przepisz adres: ' + RECIPIENT_EMAIL, 'error');
   }
 
   async function copy(text: string, label: string) {
@@ -147,29 +153,37 @@ export function SendPage() {
             <p className="flex-1 text-[15px]">
               Adres: <strong className="break-all">{RECIPIENT_EMAIL}</strong>
             </p>
-            <button type="button" className="inline-flex min-h-[40px] items-center gap-1 rounded-full bg-navy px-3 text-sm font-bold text-offwhite" onClick={() => copy(RECIPIENT_EMAIL, 'adres')}>
-              <Copy className="h-4 w-4" /> Kopiuj
-            </button>
+            {!canShare && (
+              <button type="button" className="inline-flex min-h-[40px] items-center gap-1 rounded-full bg-navy px-3 text-sm font-bold text-offwhite" onClick={() => copy(RECIPIENT_EMAIL, 'adres')}>
+                <Copy className="h-4 w-4" /> Kopiuj
+              </button>
+            )}
           </div>
           <p className="text-[13px] font-semibold text-navy/75">Temat: {model.subject}</p>
         </div>
 
-        <ol className="list-decimal space-y-1.5 pl-5 text-[15px] leading-snug text-navy/85">
-          {canShare ? (
-            <>
-              <li>Dotknij „Wyślij do lekarza” i wybierz <b>Pocztę</b> lub <b>Gmail</b>. Plik PDF będzie już dołączony – sprawdź, czy widać go w wiadomości.</li>
-              <li>
-                W polu <b>Do</b> przytrzymaj palec i wybierz <b>Wklej</b> – adres jest już skopiowany.
-              </li>
-              <li>Wyślij wiadomość.</li>
-            </>
-          ) : (
-            <>
-              <li>Dotknij „Wyślij do lekarza” – plik PDF zostanie pobrany, a program pocztowy otworzy się z wpisanym adresem i tematem.</li>
-              <li>Dołącz pobrany plik PDF (zwykle w folderze „Pobrane”) i wyślij wiadomość.</li>
-            </>
-          )}
-        </ol>
+        {canShare ? (
+          <ol className="space-y-3">
+            <li>
+              <p className="mb-1.5 text-[15px] font-bold">1. Skopiuj adres lekarza</p>
+              <button type="button" className={copied ? 'btn-navy w-full' : 'btn-secondary w-full'} onClick={copyAddress}>
+                {copied ? <CircleCheck className="h-5 w-5" /> : <Copy className="h-5 w-5" />} {copied ? 'Adres skopiowany' : 'Kopiuj adres kardiologia@'}
+              </button>
+            </li>
+            <li>
+              <p className="text-[15px] font-bold">2. Dotknij „Wyślij do lekarza” i wybierz Pocztę lub Gmail</p>
+              <p className="text-[14px] text-navy/80">Plik PDF będzie już dołączony do wiadomości.</p>
+            </li>
+            <li>
+              <p className="text-[15px] font-bold">3. W polu „Do” przytrzymaj palec → Wklej → Wyślij</p>
+            </li>
+          </ol>
+        ) : (
+          <ol className="list-decimal space-y-1.5 pl-5 text-[15px] leading-snug text-navy/85">
+            <li>Dotknij „Wyślij do lekarza” – plik PDF zostanie pobrany, a program pocztowy otworzy się z wpisanym adresem i tematem.</li>
+            <li>Dołącz pobrany plik PDF (zwykle w folderze „Pobrane”) i wyślij wiadomość.</li>
+          </ol>
+        )}
 
         <button type="button" className="btn-primary w-full text-lg" disabled={!check.ok || pdfBusy || (canShare && !pdf)} onClick={sendToDoctor}>
           {canShare && !pdf && check.ok ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />} Wyślij do lekarza
@@ -181,6 +195,12 @@ export function SendPage() {
             <p className="text-[14px] font-semibold leading-snug">
               Sprawdź w programie pocztowym, czy wiadomość została wysłana na {RECIPIENT_EMAIL} z dołączonym plikiem PDF. Dane pozostają zapisane na tym urządzeniu.
             </p>
+          </div>
+        )}
+        {status?.kind === 'error' && (
+          <div className="flex gap-3 rounded-2xl bg-burgundy p-4 text-white" role="alert">
+            <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0" />
+            <p className="text-[14px] font-semibold leading-snug">{status.text}</p>
           </div>
         )}
         {status?.kind === 'mail' && (
@@ -197,7 +217,10 @@ export function SendPage() {
         <details className="text-[14px]">
           <summary className="cursor-pointer font-bold text-navy/80">Nie działa? Wyślij ręcznie</summary>
           <div className="mt-2 space-y-2 text-navy/85">
-            <p>Pobierz PDF przyciskiem powyżej, napisz nową wiadomość na {RECIPIENT_EMAIL} i dołącz plik. Możesz skopiować gotową treść:</p>
+            <p>Pobierz PDF przyciskiem „Pobierz dzienniczek PDF” na górze strony (na iPhonie: w podglądzie PDF dotknij ikony udostępniania i wybierz „Zachowaj w Plikach”). Potem napisz wiadomość na {RECIPIENT_EMAIL} i dołącz plik.</p>
+            <a href={mailtoUrl(model.subject, body)} className="btn-secondary w-full !min-h-[44px] text-sm">
+              <Mail className="h-4 w-4" /> Otwórz e-mail z adresem i treścią
+            </a>
             <button type="button" className="btn-secondary w-full !min-h-[44px] text-sm" onClick={() => copy(body, 'treść wiadomości')}>
               <Copy className="h-4 w-4" /> Kopiuj treść wiadomości
             </button>
