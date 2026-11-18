@@ -354,11 +354,35 @@ function SymptomFields({ e, set, errors }: { e: SymptomEntry; set: SetFn; errors
 
 function MedicationFields({ e, set, errors }: { e: MedicationEntry; set: SetFn; errors: FieldErrors }) {
   const { diary } = useDiary();
+  const regular = (diary.medications ?? []).filter((m) => m.name.trim());
   const previousNames = Array.from(
     new Set(diary.entries.filter((x): x is MedicationEntry => x.kind === 'medication' && x.id !== e.id).map((x) => x.name.trim()).filter(Boolean)),
   );
   return (
     <>
+      {regular.length > 0 && (
+        <fieldset>
+          <legend className="label">Wybierz z listy leków podawanych na stałe</legend>
+          <div className="flex flex-wrap gap-2">
+            {regular.map((m) => {
+              const active = e.name === m.name && e.dose === m.dose;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => set({ name: m.name, dose: m.dose } as Partial<MedicationEntry>)}
+                  className={`min-h-[48px] rounded-2xl border-2 px-3.5 py-1.5 text-left text-[14px] font-bold leading-tight ${active ? 'border-navy bg-navy text-offwhite' : 'border-powder bg-white text-navy'}`}
+                >
+                  {m.name}
+                  <span className={`block text-[12.5px] font-semibold ${active ? 'text-offwhite/85' : 'text-navy/70'}`}>{m.dose}</span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-1.5 text-[13px] text-navy/70">Możesz też wpisać inny lek lub zmienić dawkę poniżej.</p>
+        </fieldset>
+      )}
       <Field label="Nazwa leku" error={errors.name}>
         {(id, describedBy) => (
           <>

@@ -10,7 +10,7 @@ import { newId } from './id';
 const DIARY_KEY = 'lnp-holter-dzienniczek-v1';
 
 export function newDiary(): Diary {
-  return { schemaVersion: 1, id: newId(), patient: emptyPatient(), entries: [] };
+  return { schemaVersion: 1, id: newId(), patient: emptyPatient(), medications: [], entries: [] };
 }
 
 export type LoadResult = { diary: Diary; problem: null | 'unreadable' | 'unavailable' };

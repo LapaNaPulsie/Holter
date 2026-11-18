@@ -178,6 +178,22 @@ export function generateDiaryPdf(diary: Diary, assets: PdfAssets, generatedAt: s
     headStyles: { font: 'Montserrat', fontStyle: 'bold' as const, fillColor: NAVY, textColor: [255, 255, 255] as RGB, fontSize: 8.5 },
   };
 
+  // ---------- Leki podawane na stałe ----------
+  sectionTitle('Leki podawane na stałe (wpisane przez opiekuna)');
+  if (model.medications.length === 0) {
+    muted('Opiekun nie wpisał leków podawanych na stałe.');
+  } else {
+    autoTable(doc, {
+      ...tableBase,
+      startY: y - 3,
+      head: [['Lek', 'Dawka', 'Kiedy / jak często', 'Uwagi']],
+      body: model.medications.map((m) => [m.name, m.dose, m.schedule || '–', m.notes]),
+      alternateRowStyles: { fillColor: OFFWHITE },
+      columnStyles: { 0: { cellWidth: 42, fontStyle: 'bold' }, 1: { cellWidth: 34 }, 2: { cellWidth: 42 }, 3: { cellWidth: 'auto' } },
+    });
+    y = lastY() + 10;
+  }
+
   // ---------- Okresy snu ----------
   sectionTitle('Okresy snu');
   if (model.sleeps.length === 0) {

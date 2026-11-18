@@ -4,6 +4,7 @@ import { useDiary } from '../hooks/useDiary';
 import { useToast } from '../components/Toast';
 import { ChoiceGrid, DateTimeField, TextField } from '../components/fields';
 import { StorageNote } from '../components/Notes';
+import { RegularMedsEditor } from '../components/RegularMedsEditor';
 import { LIMITS, validatePatient, type FieldErrors } from '../core/validation';
 import { normalizeTime, nowLocal } from '../core/time';
 import type { Patient, Species } from '../core/types';
@@ -108,6 +109,8 @@ export function PatientPage() {
         />
         <TextField label="Dodatkowe uwagi" optional multiline value={p.notes} onChange={(notes) => update({ notes })} error={errors.notes} maxLength={LIMITS.long} />
       </div>
+
+      <RegularMedsEditor />
 
       <StorageNote />
 

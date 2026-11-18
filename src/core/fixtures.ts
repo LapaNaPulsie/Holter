@@ -19,6 +19,10 @@ export function sampleDiary(): Diary {
       endTime: '09:40',
       notes: 'Holter założony na Andersa. Pies boi się burzy – w nocy z 18 na 19 zapowiadano wichurę.',
     },
+    medications: [
+      { id: 'r1', name: 'Pimobendan', dose: '2,5 mg', schedule: '2 × dziennie (8:00 i 20:00)', notes: 'Na godzinę przed jedzeniem.' },
+      { id: 'r2', name: 'Furosemid', dose: '½ tabletki 40 mg', schedule: 'rano', notes: '' },
+    ],
     entries: [
       { id: 'a1', kind: 'activity', date: '2026-11-18', startTime: '10:00', endTime: '10:35', type: 'spacer', customName: '', notes: 'Spokojny spacer po parku, dużo wąchania.', createdAt: '2026-11-18 10:40', updatedAt: '' },
       { id: 'm1', kind: 'medication', date: '2026-11-18', time: '08:00', name: 'Pimobendan', dose: '2,5 mg', notes: 'Podane z karmą.', createdAt: '2026-11-18 08:02', updatedAt: '' },

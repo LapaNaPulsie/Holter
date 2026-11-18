@@ -42,9 +42,18 @@ export interface SleepRow {
   notes: string;
 }
 
+export interface MedRow {
+  id: string;
+  name: string;
+  dose: string;
+  schedule: string;
+  notes: string;
+}
+
 export interface ReportModel {
   title: string;
   patientRows: Detail[];
+  medications: MedRow[];
   sleeps: SleepRow[];
   days: DayGroup[];
   counts: Record<EntryKind, number>;
@@ -262,6 +271,7 @@ export function buildReport(d: Diary): ReportModel {
   return {
     title: 'Dzienniczek holterowski',
     patientRows,
+    medications: (d.medications ?? []).map((m) => ({ id: m.id, name: m.name.trim(), dose: m.dose.trim(), schedule: m.schedule.trim(), notes: m.notes.trim() })),
     sleeps,
     days: buildTimeline(d.entries),
     counts,
@@ -285,6 +295,7 @@ export function emailBody(d: Diary): string {
     `Gatunek: ${speciesText(p.species, p.speciesOther)}`,
     `Okres badania: ${studyPeriodText(d)}`,
     `Liczba wpisów: aktywności ${c.activity}, okresy snu ${c.sleep}, objawy / zdarzenia ${c.symptom}, podania leków ${c.medication}`,
+    `Leki podawane na stałe: ${m.medications.length ? m.medications.map((x) => x.name).join(', ') : 'nie wpisano'}`,
     '',
     `Pełny dzienniczek znajduje się w załączniku PDF (${m.fileName}).`,
     '',

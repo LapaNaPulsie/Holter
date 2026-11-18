@@ -6,6 +6,7 @@ import {
   type Entry,
   type MedicationEntry,
   type Patient,
+  type RegularMed,
   type SleepEntry,
   type SymptomEntry,
 } from './types';
@@ -15,6 +16,7 @@ export const LIMITS = {
   short: 120,
   long: 5000,
   entries: 1500,
+  medications: 60,
 } as const;
 
 export type FieldErrors = Record<string, string>;
@@ -112,6 +114,15 @@ export function validateEntry(entry: Entry): FieldErrors {
   return e;
 }
 
+export function validateRegularMed(m: RegularMed): FieldErrors {
+  const e: FieldErrors = {};
+  checkText(e, 'name', m.name, LIMITS.short, true);
+  checkText(e, 'dose', m.dose, LIMITS.short, true);
+  checkText(e, 'schedule', m.schedule, LIMITS.short);
+  checkText(e, 'notes', m.notes, LIMITS.long);
+  return e;
+}
+
 /** Uwagi, które nie blokują zapisu (np. wpis poza okresem badania). */
 export function entryWarnings(entry: Entry, patient: Patient): string[] {
   const out: string[] = [];
@@ -189,6 +200,17 @@ export function parseDiary(input: unknown, opts: { requireComplete: boolean }): 
   }
   if (input.entries.length > LIMITS.entries) return { ok: false, error: 'Dzienniczek ma zbyt wiele wpisów.' };
   const patient = pickPatient(input.patient);
+  const rawMeds = Array.isArray(input.medications) ? input.medications : [];
+  if (rawMeds.length > LIMITS.medications) return { ok: false, error: 'Lista leków jest zbyt długa.' };
+  const medications: RegularMed[] = [];
+  for (const m of rawMeds) {
+    if (!isObj(m)) return { ok: false, error: 'Nieprawidłowy wpis na liście leków.' };
+    const med: RegularMed = { id: str(m, 'id').slice(0, 64), name: str(m, 'name'), dose: str(m, 'dose'), schedule: str(m, 'schedule'), notes: str(m, 'notes') };
+    if (opts.requireComplete && Object.keys(validateRegularMed(med)).length > 0) {
+      return { ok: false, error: 'Jeden z leków na liście „Leki podawane na stałe” ma niepełne dane.' };
+    }
+    medications.push(med);
+  }
   const entries: Entry[] = [];
   for (const raw of input.entries) {
     if (!isObj(raw)) return { ok: false, error: 'Nieprawidłowy wpis w dzienniczku.' };
@@ -203,7 +225,7 @@ export function parseDiary(input: unknown, opts: { requireComplete: boolean }): 
     if (Object.keys(validatePatient(patient)).length > 0) return { ok: false, error: 'Uzupełnij poprawnie dane pacjenta i badania.' };
     if (entries.length === 0) return { ok: false, error: 'Dzienniczek nie zawiera żadnych wpisów.' };
   }
-  return { ok: true, diary: { schemaVersion: 1, id: str(input, 'id').slice(0, 64), patient, entries } };
+  return { ok: true, diary: { schemaVersion: 1, id: str(input, 'id').slice(0, 64), patient, medications, entries } };
 }
 
 /** Deterministyczna postać JSON dzienniczka (stała kolejność pól) – do porównań i ochrony przed duplikatami. */

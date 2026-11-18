@@ -95,11 +95,22 @@ export interface MedicationEntry extends EntryBase {
 export type Entry = ActivityEntry | SleepEntry | SymptomEntry | MedicationEntry;
 export type EntryKind = Entry['kind'];
 
+/** Lek podawany na stałe – wpisany przez opiekuna (aplikacja niczego nie proponuje ani nie oblicza). */
+export interface RegularMed {
+  id: string;
+  name: string;
+  dose: string;
+  schedule: string;
+  notes: string;
+}
+
 export interface Diary {
   schemaVersion: 1;
   /** Losowy identyfikator dzienniczka na tym urządzeniu. */
   id: string;
   patient: Patient;
+  /** Leki podawane na stałe (lista opiekuna). */
+  medications: RegularMed[];
   entries: Entry[];
 }
 

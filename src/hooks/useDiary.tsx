@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import type { Diary, Entry, Patient } from '../core/types';
+import type { Diary, Entry, Patient, RegularMed } from '../core/types';
 import { nowLocal } from '../core/time';
 import { loadDiary, newDiary, requestPersistentStorage, saveDiary, STORAGE_KEYS } from '../lib/storage';
 import { useToast } from '../components/Toast';
@@ -7,6 +7,8 @@ import { useToast } from '../components/Toast';
 interface DiaryContextValue {
   diary: Diary;
   savePatient: (p: Patient) => boolean;
+  saveRegularMed: (m: RegularMed) => boolean;
+  deleteRegularMed: (id: string) => boolean;
   saveEntry: (e: Entry) => boolean;
   deleteEntry: (id: string) => boolean;
   resetDiary: () => boolean;
@@ -58,6 +60,18 @@ export function DiaryProvider({ children }: { children: ReactNode }) {
 
   const savePatient = useCallback((p: Patient) => commit({ ...latest.current, patient: p }), [commit]);
 
+  const saveRegularMed = useCallback((m: RegularMed) => {
+    const d = latest.current;
+    const meds = d.medications ?? [];
+    const next = meds.some((x) => x.id === m.id) ? meds.map((x) => (x.id === m.id ? m : x)) : [...meds, m];
+    return commit({ ...d, medications: next });
+  }, [commit]);
+
+  const deleteRegularMed = useCallback(
+    (id: string) => commit({ ...latest.current, medications: (latest.current.medications ?? []).filter((x) => x.id !== id) }),
+    [commit],
+  );
+
   const saveEntry = useCallback(
     (e: Entry) => {
       const diary = latest.current;
@@ -81,6 +95,8 @@ export function DiaryProvider({ children }: { children: ReactNode }) {
   const value: DiaryContextValue = {
     diary,
     savePatient,
+    saveRegularMed,
+    deleteRegularMed,
     saveEntry,
     deleteEntry,
     resetDiary,

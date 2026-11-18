@@ -76,7 +76,7 @@ describe('walidacja', () => {
   });
   it('canonicalJson nie zależy od kolejności pól', () => {
     const d = sampleDiary();
-    const shuffled = JSON.parse(JSON.stringify({ entries: d.entries, patient: d.patient, id: d.id, schemaVersion: 1 }));
+    const shuffled = JSON.parse(JSON.stringify({ entries: d.entries, medications: d.medications, patient: d.patient, id: d.id, schemaVersion: 1 }));
     expect(canonicalJson(shuffled)).toBe(canonicalJson(d));
   });
 });
@@ -116,5 +116,21 @@ describe('treść e-maila', () => {
     expect(b).toContain('Nazwisko opiekuna: Żółkiewska-Ćwik');
     expect(b).toContain('Okres badania: 18.11.2026, 09:15 – 20.11.2026, 09:40');
     expect(b).toContain('w załączniku PDF (dzienniczek-holter-latka-zolkiewska-cwik-2026-11-18.pdf)');
+  });
+});
+
+import { parseDiary as parse2 } from './validation';
+import { buildReport as build2 } from './report';
+describe('leki podawane na stałe', () => {
+  it('są w modelu raportu i treści e-maila; stary dzienniczek bez listy działa', () => {
+    const d = sampleDiary();
+    expect(build2(d).medications.map((m) => m.name)).toEqual(['Pimobendan', 'Furosemid']);
+    expect(emailBody(d)).toContain('Leki podawane na stałe: Pimobendan, Furosemid');
+    const old = { ...d } as Record<string, unknown>;
+    delete old.medications;
+    const r = parse2(old, { requireComplete: true });
+    expect(r.ok && r.diary.medications).toEqual([]);
+    const bad = { ...d, medications: [{ id: 'x', name: '', dose: '', schedule: '', notes: '' }] };
+    expect(parse2(bad, { requireComplete: true }).ok).toBe(false);
   });
 });

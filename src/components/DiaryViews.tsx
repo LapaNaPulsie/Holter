@@ -104,6 +104,32 @@ export function DiaryPreview({ model, onEdit, onEditPatient }: { model: ReportMo
       </section>
 
       <section className="card">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h3 className="section-title">Leki podawane na stałe</h3>
+          {onEditPatient && (
+            <button type="button" className="btn-ghost !min-h-[40px] text-sm print:hidden" onClick={onEditPatient}>
+              <Pencil className="h-4 w-4" /> Popraw
+            </button>
+          )}
+        </div>
+        {model.medications.length === 0 ? (
+          <p className="text-[15px] text-navy/70">Nie wpisano leków podawanych na stałe.</p>
+        ) : (
+          <ul className="divide-y divide-powder">
+            {model.medications.map((m) => (
+              <li key={m.id} className="py-2.5 text-[15px]">
+                <p className="font-bold">
+                  {m.name} <span className="font-semibold text-navy/75">– {m.dose}</span>
+                </p>
+                {m.schedule && <p className="text-navy/80">Kiedy: {m.schedule}</p>}
+                {m.notes && <p className="whitespace-pre-wrap break-words text-navy/80">Uwagi: {m.notes}</p>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="card">
         <h3 className="section-title mb-3">Okresy snu</h3>
         {model.sleeps.length === 0 ? (
           <p className="text-[15px] text-navy/70">Nie zapisano okresów snu.</p>

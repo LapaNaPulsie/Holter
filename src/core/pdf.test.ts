@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { generateDiaryPdf, LOGO_RATIO, type PdfAssets } from './pdf';
 import { sampleDiary } from './fixtures';
 
@@ -20,5 +21,9 @@ describe('PDF', () => {
     const bytes = new Uint8Array(buf);
     expect(String.fromCharCode(...bytes.slice(0, 5))).toBe('%PDF-');
     if (process.env.PDF_OUT) writeFileSync(process.env.PDF_OUT, bytes);
+    const f = `/tmp/pdf-test-${process.pid}.pdf`;
+    writeFileSync(f, bytes);
+    const text = execFileSync('pdftotext', ['-layout', f, '-']).toString();
+    for (const s of ['Leki podawane na stałe', 'Furosemid', '½ tabletki 40 mg', 'Zażółć gęślą jaźń']) expect(text).toContain(s);
   });
 });
