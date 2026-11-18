@@ -55,7 +55,7 @@ export function InfoPage() {
         >
           Twoja przeglądarka nie odtwarza filmów.
         </video>
-        <p className="text-[13px] text-navy/70">Film nie ma dźwięku – wszystkie wskazówki są w napisach.</p>
+        <p className="text-[13px] text-navy/70">Wskazówki są w napisach, w tle gra spokojna muzyka.</p>
       </section>
 
       <InstructionCard />
