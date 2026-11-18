@@ -24,10 +24,10 @@ export function deviceCanShareFiles(): boolean {
 export type ShareOutcome = 'shared' | 'cancelled' | 'unsupported' | 'error';
 
 /** „shared” oznacza tylko wybranie aplikacji – NIE jest potwierdzeniem wysłania wiadomości. */
-export async function shareFile(file: File, title: string, text: string): Promise<ShareOutcome> {
+export async function shareFile(file: File, title: string): Promise<ShareOutcome> {
   if (!canShareFile(file)) return 'unsupported';
   try {
-    await navigator.share({ files: [file], title, text });
+    await navigator.share({ files: [file], title });
     return 'shared';
   } catch (e) {
     if (e instanceof DOMException && e.name === 'AbortError') return 'cancelled';

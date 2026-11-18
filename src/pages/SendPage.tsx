@@ -67,7 +67,8 @@ export function SendPage() {
     if (canShare && pdf) {
       // Adres do schowka – w programie pocztowym wystarczy go wkleić w polu „Do”.
       void copyText(RECIPIENT_EMAIL);
-      const res = await shareFile(pdf, model.subject, `Do: ${RECIPIENT_EMAIL}\n\n${body}`);
+      // Tylko plik (bez tekstu): część aplikacji pocztowych, np. Gmail, pomija załącznik, gdy dostaje też tekst.
+      const res = await shareFile(pdf, model.subject);
       if (res === 'shared') setStatus({ kind: 'shared' });
       else if (res === 'error' || res === 'unsupported') fallbackMail(pdf);
       return;
@@ -156,7 +157,7 @@ export function SendPage() {
         <ol className="list-decimal space-y-1.5 pl-5 text-[15px] leading-snug text-navy/85">
           {canShare ? (
             <>
-              <li>Dotknij „Wyślij do lekarza” i wybierz <b>Pocztę</b> lub <b>Gmail</b>. Plik PDF będzie już dołączony.</li>
+              <li>Dotknij „Wyślij do lekarza” i wybierz <b>Pocztę</b> lub <b>Gmail</b>. Plik PDF będzie już dołączony – sprawdź, czy widać go w wiadomości.</li>
               <li>
                 W polu <b>Do</b> przytrzymaj palec i wybierz <b>Wklej</b> – adres jest już skopiowany.
               </li>
