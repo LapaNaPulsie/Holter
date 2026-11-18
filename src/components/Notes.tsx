@@ -24,7 +24,7 @@ export function StorageNote() {
     <div className="flex gap-3 rounded-2xl bg-cream/60 p-3.5 text-[14px] font-semibold leading-snug">
       <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-navy" aria-hidden />
       <p>
-        Dane są zapisywane automatycznie w tej przeglądarce, na tym urządzeniu. Lekarz otrzyma je dopiero po użyciu przycisku „Wyślij do lekarza”.
+        Dane są zapisywane automatycznie w tej przeglądarce, na tym urządzeniu. Lekarz otrzyma je dopiero wtedy, gdy wyślesz mu plik PDF (przycisk „Wyślij do lekarza”).
       </p>
     </div>
   );

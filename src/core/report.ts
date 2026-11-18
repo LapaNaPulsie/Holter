@@ -269,3 +269,25 @@ export function buildReport(d: Diary): ReportModel {
     fileName: reportFileName(d),
   };
 }
+
+/** Treść e-maila do lekarza (wstawiana do programu pocztowego opiekuna). */
+export function emailBody(d: Diary): string {
+  const p = d.patient;
+  const m = buildReport(d);
+  const c = m.counts;
+  return [
+    'Dzień dobry,',
+    '',
+    'przesyłam dzienniczek holterowski.',
+    '',
+    `Pacjent: ${p.petName.trim()}`,
+    `Nazwisko opiekuna: ${p.ownerName.trim()}`,
+    `Gatunek: ${speciesText(p.species, p.speciesOther)}`,
+    `Okres badania: ${studyPeriodText(d)}`,
+    `Liczba wpisów: aktywności ${c.activity}, okresy snu ${c.sleep}, objawy / zdarzenia ${c.symptom}, podania leków ${c.medication}`,
+    '',
+    `Pełny dzienniczek znajduje się w załączniku PDF (${m.fileName}).`,
+    '',
+    'Pozdrawiam',
+  ].join('\n');
+}

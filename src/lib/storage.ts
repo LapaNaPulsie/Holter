@@ -8,12 +8,6 @@ import { newId } from './id';
  */
 
 const DIARY_KEY = 'lnp-holter-dzienniczek-v1';
-const META_KEY = 'lnp-holter-meta-v1';
-
-export interface DiaryMeta {
-  /** Odcisk treści ostatnio wysłanego dzienniczka i czas wysyłki (czas urządzenia). */
-  lastSent?: { fingerprint: string; at: string; duplicate?: boolean };
-}
 
 export function newDiary(): Diary {
   return { schemaVersion: 1, id: newId(), patient: emptyPatient(), entries: [] };
@@ -55,34 +49,7 @@ export function saveDiary(diary: Diary): boolean {
   }
 }
 
-export function loadMeta(): DiaryMeta {
-  try {
-    const raw = localStorage.getItem(META_KEY);
-    return raw ? (JSON.parse(raw) as DiaryMeta) : {};
-  } catch {
-    return {};
-  }
-}
-
-export function saveMeta(meta: DiaryMeta): void {
-  try {
-    localStorage.setItem(META_KEY, JSON.stringify(meta));
-  } catch {
-    /* informacja pomocnicza – brak zapisu nie blokuje działania */
-  }
-}
-
-export const STORAGE_KEYS = { DIARY_KEY, META_KEY };
-
-/** Szybki odcisk tekstu (FNV-1a) – tylko do sprawdzenia, czy dzienniczek zmienił się od wysyłki. */
-export function fingerprint(text: string): string {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < text.length; i++) {
-    h ^= text.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
-  return `${text.length}-${(h >>> 0).toString(16)}`;
-}
+export const STORAGE_KEYS = { DIARY_KEY };
 
 export async function requestPersistentStorage(): Promise<void> {
   try {

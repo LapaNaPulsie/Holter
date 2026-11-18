@@ -33,7 +33,6 @@ export default defineConfig({
         globIgnores: ['**/html2canvas*', '**/purify*', '**/index.es-*'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/\.netlify\//],
         cleanupOutdatedCaches: true,
         runtimeCaching: [],
       },
@@ -45,6 +44,6 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts', 'netlify/**/*.test.ts'],
+    include: ['src/**/*.test.ts'],
   },
 });

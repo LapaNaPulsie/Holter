@@ -106,7 +106,7 @@ export function DiaryPage() {
       <Link to="/wyslij" className="btn-primary w-full text-lg">
         <Send className="h-5 w-5" /> Wyślij do lekarza
       </Link>
-      <p className="-mt-2 text-center text-[13px] font-semibold text-navy/65">Przed wysłaniem zobaczysz podgląd i będzie można pobrać PDF.</p>
+      <p className="-mt-2 text-center text-[13px] font-semibold text-navy/65">Zobaczysz podgląd, pobierzesz PDF i wyślesz go e-mailem.</p>
     </div>
   );
 }

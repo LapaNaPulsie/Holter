@@ -60,7 +60,5 @@ export const INSTRUCTION_TEXT =
 export const NOT_MONITORED_TEXT =
   'Dzienniczek nie jest monitorowany na bieżąco. W razie nagłego pogorszenia stanu zwierzęcia skontaktuj się niezwłocznie z lekarzem weterynarii.';
 
-export const SENT_TEXT = `Dzienniczek został przekazany do wysyłki na adres ${RECIPIENT_EMAIL}`;
-
 export const REPORT_FOOTER =
   'Dzienniczek wypełniony przez opiekuna zwierzęcia w czasie badania Holter EKG. Zawiera obserwacje opiekuna – nie stanowi interpretacji ani diagnozy.';

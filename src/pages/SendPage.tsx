@@ -1,65 +1,93 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { CircleCheck, Download, LoaderCircle, Mail, Printer, Send, TriangleAlert } from 'lucide-react';
+import { CircleCheck, Copy, Download, LoaderCircle, Mail, Printer, Send, TriangleAlert } from 'lucide-react';
 import { useDiary } from '../hooks/useDiary';
 import { useEntryEditor } from '../components/EntryEditor';
 import { useToast } from '../components/Toast';
 import { DiaryPreview } from '../components/DiaryViews';
-import { Modal } from '../components/Modal';
-import { buildReport, stampLabel, studyPeriodText } from '../core/report';
-import { RECIPIENT_EMAIL, REPORT_FOOTER, SENT_TEXT } from '../core/labels';
+import { buildReport, emailBody, studyPeriodText } from '../core/report';
+import { RECIPIENT_EMAIL, REPORT_FOOTER } from '../core/labels';
 import { parseDiary } from '../core/validation';
 import { downloadFile, makePdfFile } from '../lib/pdfClient';
-import { sendDiary } from '../lib/sendClient';
+import { copyText, deviceCanShareFiles, mailtoUrl, shareFile } from '../lib/share';
 
-type SendState = { phase: 'idle' } | { phase: 'confirm' } | { phase: 'sending' } | { phase: 'error'; message: string; retryable: boolean };
+type Status = null | { kind: 'shared' } | { kind: 'mail' } | { kind: 'error'; text: string };
 
 export function SendPage() {
-  const { diary, meta, changedSinceSent, markSent } = useDiary();
+  const { diary } = useDiary();
   const { edit } = useEntryEditor();
   const toast = useToast();
   const navigate = useNavigate();
   const model = useMemo(() => buildReport(diary), [diary]);
   const check = useMemo(() => parseDiary(diary, { requireComplete: true }), [diary]);
+  const body = useMemo(() => emailBody(diary), [diary]);
+  const canShare = useMemo(() => deviceCanShareFiles(), []);
+  const [pdf, setPdf] = useState<File | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
-  const [send, setSend] = useState<SendState>({ phase: 'idle' });
-  const [justSent, setJustSent] = useState<null | { duplicate: boolean }>(null);
-  const [honeypot, setHoneypot] = useState('');
-  const sendingRef = useRef(false);
+  const [status, setStatus] = useState<Status>(null);
 
-  async function downloadPdf() {
+  // PDF przygotowywany z wyprzedzeniem – udostępnianie musi ruszyć od razu po dotknięciu przycisku.
+  useEffect(() => {
+    let alive = true;
+    setPdf(null);
+    setStatus(null);
+    const t = setTimeout(() => {
+      makePdfFile(diary)
+        .then((f) => alive && setPdf(f))
+        .catch(() => alive && setPdf(null));
+    }, 300);
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
+  }, [diary]);
+
+  async function getPdf(): Promise<File | null> {
+    if (pdf) return pdf;
     setPdfBusy(true);
     try {
-      downloadFile(await makePdfFile(diary));
-    } catch (e) {
-      console.error(e);
+      const f = await makePdfFile(diary);
+      setPdf(f);
+      return f;
+    } catch {
       toast('Nie udało się przygotować pliku PDF. Spróbuj ponownie.', 'error');
+      return null;
     } finally {
       setPdfBusy(false);
     }
   }
 
-  async function doSend() {
-    // Blokada wielokrotnego kliknięcia – niezależna od odświeżenia widoku
-    if (sendingRef.current) return;
-    sendingRef.current = true;
-    setSend({ phase: 'sending' });
-    try {
-      const res = await sendDiary(diary, honeypot);
-      if (res.ok) {
-        markSent(res.duplicate);
-        setJustSent({ duplicate: res.duplicate });
-        setSend({ phase: 'idle' });
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      } else {
-        setSend({ phase: 'error', message: res.message, retryable: res.retryable });
-      }
-    } finally {
-      sendingRef.current = false;
-    }
+  async function download() {
+    const f = await getPdf();
+    if (f) downloadFile(f);
   }
 
-  const sentBanner = justSent ?? (meta.lastSent && !changedSinceSent ? { duplicate: false } : null);
+  async function sendToDoctor() {
+    if (!check.ok) return;
+    if (canShare && pdf) {
+      // Adres do schowka – w programie pocztowym wystarczy go wkleić w polu „Do”.
+      void copyText(RECIPIENT_EMAIL);
+      const res = await shareFile(pdf, model.subject, `Do: ${RECIPIENT_EMAIL}\n\n${body}`);
+      if (res === 'shared') setStatus({ kind: 'shared' });
+      else if (res === 'error' || res === 'unsupported') fallbackMail(pdf);
+      return;
+    }
+    const f = await getPdf();
+    if (f) fallbackMail(f);
+  }
+
+  /** Komputer / brak udostępniania: pobierz PDF i otwórz e-mail z adresem, tematem i treścią. */
+  function fallbackMail(f: File) {
+    downloadFile(f);
+    setStatus({ kind: 'mail' });
+    setTimeout(() => {
+      window.location.href = mailtoUrl(model.subject, body);
+    }, 600);
+  }
+
+  async function copy(text: string, label: string) {
+    toast((await copyText(text)) ? `Skopiowano ${label}.` : 'Nie udało się skopiować – zaznacz tekst ręcznie.', 'success');
+  }
 
   return (
     <div className="space-y-5">
@@ -76,22 +104,6 @@ export function SendPage() {
           <p className="text-sm">Obserwacje opiekuna w czasie badania Holter EKG · {studyPeriodText(diary)}</p>
         </div>
       </div>
-
-      {sentBanner && (
-        <div className="flex gap-3 rounded-3xl bg-navy p-4 text-offwhite shadow-soft print:hidden" role="status">
-          <CircleCheck className="mt-0.5 h-6 w-6 shrink-0" />
-          <div className="text-[15px] font-semibold leading-snug">
-            <p className="font-extrabold">{SENT_TEXT}</p>
-            {justSent?.duplicate && <p className="mt-1 text-offwhite/85">Ten sam dzienniczek był już wcześniej przekazany – nie wysłaliśmy go drugi raz.</p>}
-            {meta.lastSent && <p className="mt-1 text-offwhite/85">Wysłano: {stampLabel(meta.lastSent.at)}. Dane pozostają zapisane na tym urządzeniu.</p>}
-          </div>
-        </div>
-      )}
-      {meta.lastSent && changedSinceSent && !justSent && (
-        <div className="card-cream text-[15px] font-semibold print:hidden">
-          Dzienniczek wysłano {stampLabel(meta.lastSent.at)}, ale od tego czasu wprowadzono zmiany. Możesz wysłać zaktualizowaną wersję.
-        </div>
-      )}
 
       {!check.ok && (
         <div className="flex gap-3 rounded-3xl border-2 border-burgundy/40 bg-white p-4 print:hidden" role="alert">
@@ -111,7 +123,7 @@ export function SendPage() {
       )}
 
       <div className="grid grid-cols-2 gap-3 print:hidden">
-        <button type="button" className="btn-secondary" onClick={downloadPdf} disabled={pdfBusy}>
+        <button type="button" className="btn-secondary" onClick={download} disabled={pdfBusy}>
           {pdfBusy ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Download className="h-5 w-5" />} Pobierz dzienniczek PDF
         </button>
         <button type="button" className="btn-secondary" onClick={() => window.print()}>
@@ -125,87 +137,72 @@ export function SendPage() {
 
       <section className="card space-y-4 print:hidden" aria-labelledby="wysylka">
         <h2 id="wysylka" className="section-title">
-          Wysyłka do lekarza
+          Wyślij do lekarza
         </h2>
-        <div className="flex items-center gap-3 rounded-2xl bg-cream/60 p-3.5">
-          <Mail className="h-5 w-5 shrink-0" />
-          <p className="text-[15px]">
-            Odbiorca: <strong className="break-all">{RECIPIENT_EMAIL}</strong>
-          </p>
-        </div>
-        <p className="text-[14px] leading-snug text-navy/80">Wiadomość zawiera dane pacjenta, okres badania oraz pełny dzienniczek w załączniku PDF (taki sam jak powyższy podgląd).</p>
-        <button type="button" className="btn-primary w-full text-lg" disabled={!check.ok} onClick={() => setSend({ phase: 'confirm' })}>
-          <Send className="h-5 w-5" /> Wyślij do lekarza
-        </button>
-      </section>
 
-      <Modal
-        open={send.phase !== 'idle'}
-        title={send.phase === 'error' ? 'Nie udało się wysłać' : 'Wysłać dzienniczek?'}
-        onClose={() => send.phase !== 'sending' && setSend({ phase: 'idle' })}
-        dismissOnBackdrop={false}
-      >
-        {send.phase === 'error' ? (
-          <div className="space-y-4">
-            <div className="flex gap-3 rounded-2xl bg-burgundy p-4 text-white" role="alert">
-              <TriangleAlert className="mt-0.5 h-6 w-6 shrink-0" />
-              <p className="text-[15px] font-semibold leading-snug">{send.message}</p>
-            </div>
-            <p className="text-[14px] text-navy/80">Wszystkie wpisy pozostały zapisane na tym urządzeniu.</p>
-            {send.retryable && (
-              <button type="button" className="btn-primary w-full" onClick={doSend}>
-                Spróbuj ponownie
-              </button>
-            )}
-            <button type="button" className="btn-secondary w-full" onClick={downloadPdf} disabled={pdfBusy}>
-              <Download className="h-5 w-5" /> Pobierz dzienniczek PDF
-            </button>
-            <button type="button" className="btn-ghost w-full" onClick={() => setSend({ phase: 'idle' })}>
-              Zamknij
+        <div className="space-y-2 rounded-2xl bg-cream/60 p-3.5">
+          <div className="flex items-center gap-2">
+            <Mail className="h-5 w-5 shrink-0" />
+            <p className="flex-1 text-[15px]">
+              Adres: <strong className="break-all">{RECIPIENT_EMAIL}</strong>
+            </p>
+            <button type="button" className="inline-flex min-h-[40px] items-center gap-1 rounded-full bg-navy px-3 text-sm font-bold text-offwhite" onClick={() => copy(RECIPIENT_EMAIL, 'adres')}>
+              <Copy className="h-4 w-4" /> Kopiuj
             </button>
           </div>
-        ) : (
-          <div className="space-y-4">
-            <dl className="space-y-2 rounded-2xl bg-white p-4 text-[15px]">
-              <div>
-                <dt className="text-navy/65">Odbiorca</dt>
-                <dd className="break-all font-bold">{RECIPIENT_EMAIL}</dd>
-              </div>
-              <div>
-                <dt className="text-navy/65">Temat</dt>
-                <dd className="font-semibold">{model.subject}</dd>
-              </div>
-              <div>
-                <dt className="text-navy/65">Okres badania</dt>
-                <dd className="font-semibold">{studyPeriodText(diary)}</dd>
-              </div>
-              <div>
-                <dt className="text-navy/65">Załącznik</dt>
-                <dd className="break-all font-semibold">{model.fileName}</dd>
-              </div>
-            </dl>
-            {/* Pole-pułapka na automaty spamujące – niewidoczne dla ludzi */}
-            <div aria-hidden="true" className="absolute left-[-9999px] top-auto h-px w-px overflow-hidden">
-              <label>
-                Strona internetowa
-                <input type="text" tabIndex={-1} autoComplete="off" value={honeypot} onChange={(e) => setHoneypot(e.target.value)} />
-              </label>
-            </div>
-            {send.phase === 'sending' ? (
-              <div className="flex min-h-[52px] items-center justify-center gap-3 rounded-2xl bg-navy px-5 font-bold text-offwhite" role="status" aria-live="assertive">
-                <LoaderCircle className="h-5 w-5 animate-spin" /> Wysyłanie dzienniczka…
-              </div>
-            ) : (
-              <button type="button" className="btn-primary w-full text-lg" onClick={doSend}>
-                Potwierdzam – wyślij
-              </button>
-            )}
-            <button type="button" className="btn-secondary w-full" disabled={send.phase === 'sending'} onClick={() => setSend({ phase: 'idle' })}>
-              Wróć i popraw
-            </button>
+          <p className="text-[13px] font-semibold text-navy/75">Temat: {model.subject}</p>
+        </div>
+
+        <ol className="list-decimal space-y-1.5 pl-5 text-[15px] leading-snug text-navy/85">
+          {canShare ? (
+            <>
+              <li>Dotknij „Wyślij do lekarza” i wybierz <b>Pocztę</b> lub <b>Gmail</b>. Plik PDF będzie już dołączony.</li>
+              <li>
+                W polu <b>Do</b> przytrzymaj palec i wybierz <b>Wklej</b> – adres jest już skopiowany.
+              </li>
+              <li>Wyślij wiadomość.</li>
+            </>
+          ) : (
+            <>
+              <li>Dotknij „Wyślij do lekarza” – plik PDF zostanie pobrany, a program pocztowy otworzy się z wpisanym adresem i tematem.</li>
+              <li>Dołącz pobrany plik PDF (zwykle w folderze „Pobrane”) i wyślij wiadomość.</li>
+            </>
+          )}
+        </ol>
+
+        <button type="button" className="btn-primary w-full text-lg" disabled={!check.ok || pdfBusy || (canShare && !pdf)} onClick={sendToDoctor}>
+          {canShare && !pdf && check.ok ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />} Wyślij do lekarza
+        </button>
+
+        {status?.kind === 'shared' && (
+          <div className="flex gap-3 rounded-2xl bg-navy p-4 text-offwhite" role="status">
+            <CircleCheck className="mt-0.5 h-5 w-5 shrink-0" />
+            <p className="text-[14px] font-semibold leading-snug">
+              Sprawdź w programie pocztowym, czy wiadomość została wysłana na {RECIPIENT_EMAIL} z dołączonym plikiem PDF. Dane pozostają zapisane na tym urządzeniu.
+            </p>
           </div>
         )}
-      </Modal>
+        {status?.kind === 'mail' && (
+          <div className="space-y-2 rounded-2xl bg-navy p-4 text-offwhite" role="status">
+            <p className="text-[14px] font-semibold leading-snug">
+              Plik PDF został pobrany. Dołącz go do wiadomości i wyślij. Jeśli program pocztowy się nie otworzył, napisz na {RECIPIENT_EMAIL} i dołącz plik {model.fileName}.
+            </p>
+            <a href={mailtoUrl(model.subject, body)} className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-offwhite px-4 text-sm font-bold text-navy">
+              <Mail className="h-4 w-4" /> Otwórz e-mail ponownie
+            </a>
+          </div>
+        )}
+
+        <details className="text-[14px]">
+          <summary className="cursor-pointer font-bold text-navy/80">Nie działa? Wyślij ręcznie</summary>
+          <div className="mt-2 space-y-2 text-navy/85">
+            <p>Pobierz PDF przyciskiem powyżej, napisz nową wiadomość na {RECIPIENT_EMAIL} i dołącz plik. Możesz skopiować gotową treść:</p>
+            <button type="button" className="btn-secondary w-full !min-h-[44px] text-sm" onClick={() => copy(body, 'treść wiadomości')}>
+              <Copy className="h-4 w-4" /> Kopiuj treść wiadomości
+            </button>
+          </div>
+        </details>
+      </section>
     </div>
   );
 }

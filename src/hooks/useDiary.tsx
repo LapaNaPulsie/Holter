@@ -1,20 +1,15 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Diary, Entry, Patient } from '../core/types';
-import { canonicalJson } from '../core/validation';
 import { nowLocal } from '../core/time';
-import { fingerprint, loadDiary, loadMeta, newDiary, requestPersistentStorage, saveDiary, saveMeta, STORAGE_KEYS, type DiaryMeta } from '../lib/storage';
+import { loadDiary, newDiary, requestPersistentStorage, saveDiary, STORAGE_KEYS } from '../lib/storage';
 import { useToast } from '../components/Toast';
 
 interface DiaryContextValue {
   diary: Diary;
-  meta: DiaryMeta;
-  /** Czy dzienniczek zmienił się od ostatniej udanej wysyłki. */
-  changedSinceSent: boolean;
   savePatient: (p: Patient) => boolean;
   saveEntry: (e: Entry) => boolean;
   deleteEntry: (id: string) => boolean;
   resetDiary: () => boolean;
-  markSent: (duplicate: boolean) => void;
 }
 
 const DiaryContext = createContext<DiaryContextValue | null>(null);
@@ -27,7 +22,6 @@ export function DiaryProvider({ children }: { children: ReactNode }) {
   const initial = useRef<ReturnType<typeof loadDiary> | null>(null);
   if (!initial.current) initial.current = loadDiary();
   const [diary, setDiary] = useState<Diary>(initial.current.diary);
-  const [meta, setMeta] = useState<DiaryMeta>(() => loadMeta());
   // Zawsze najnowszy stan – kolejne szybkie zmiany nie nadpisują się nawzajem.
   const latest = useRef<Diary>(diary);
 
@@ -46,7 +40,6 @@ export function DiaryProvider({ children }: { children: ReactNode }) {
         latest.current = d;
         setDiary(d);
       }
-      if (e.key === STORAGE_KEYS.META_KEY) setMeta(loadMeta());
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
@@ -82,33 +75,15 @@ export function DiaryProvider({ children }: { children: ReactNode }) {
   );
 
   const resetDiary = useCallback(() => {
-    const ok = commit(newDiary());
-    const m: DiaryMeta = {};
-    setMeta(m);
-    saveMeta(m);
-    return ok;
+    return commit(newDiary());
   }, [commit]);
-
-  const currentFingerprint = useMemo(() => fingerprint(canonicalJson(diary)), [diary]);
-
-  const markSent = useCallback(
-    (duplicate: boolean) => {
-      const m: DiaryMeta = { ...meta, lastSent: { fingerprint: currentFingerprint, at: nowLocal().stamp, duplicate } };
-      setMeta(m);
-      saveMeta(m);
-    },
-    [meta, currentFingerprint],
-  );
 
   const value: DiaryContextValue = {
     diary,
-    meta,
-    changedSinceSent: !!meta.lastSent && meta.lastSent.fingerprint !== currentFingerprint,
     savePatient,
     saveEntry,
     deleteEntry,
     resetDiary,
-    markSent,
   };
   return <DiaryContext.Provider value={value}>{children}</DiaryContext.Provider>;
 }

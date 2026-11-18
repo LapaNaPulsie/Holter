@@ -107,3 +107,14 @@ describe('raport', () => {
     expect(m.sleeps[2].end).toBe('nie zapisano');
   });
 });
+
+import { emailBody } from './report';
+describe('treść e-maila', () => {
+  it('zawiera dane pacjenta, okres badania i informację o załączniku', () => {
+    const b = emailBody(sampleDiary());
+    expect(b).toContain('Pacjent: Łatka');
+    expect(b).toContain('Nazwisko opiekuna: Żółkiewska-Ćwik');
+    expect(b).toContain('Okres badania: 18.11.2026, 09:15 – 20.11.2026, 09:40');
+    expect(b).toContain('w załączniku PDF (dzienniczek-holter-latka-zolkiewska-cwik-2026-11-18.pdf)');
+  });
+});
