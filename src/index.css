@@ -1,0 +1,111 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-offwhite font-sans text-navy antialiased;
+    min-height: 100dvh;
+  }
+  h1, h2, h3 {
+    @apply text-navy;
+  }
+  /* 16px w polach formularza – iPhone nie powiększa wtedy ekranu */
+  input, textarea, select {
+    font-size: 16px;
+  }
+  :focus-visible {
+    outline: 3px solid #C99A70;
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .app-bg {
+    background-color: #FFF5EB;
+    background-image: url('/assets/01_brand/tlo_delikatne_luki.svg');
+    background-repeat: no-repeat;
+    background-position: top right;
+    background-size: 900px auto;
+  }
+  .btn {
+    @apply inline-flex min-h-[52px] items-center justify-center gap-2 rounded-2xl px-5 text-base font-bold transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-burgundy text-white shadow-soft hover:bg-burgundy-dark;
+  }
+  .btn-navy {
+    @apply btn bg-navy text-offwhite shadow-soft hover:bg-navy-soft;
+  }
+  .btn-secondary {
+    @apply btn border-2 border-navy/15 bg-white text-navy hover:border-navy/30;
+  }
+  .btn-ghost {
+    @apply btn min-h-[44px] bg-transparent px-3 text-navy hover:bg-cream/60;
+  }
+  .btn-danger {
+    @apply btn border-2 border-burgundy/30 bg-white text-burgundy hover:bg-burgundy/5;
+  }
+  .card {
+    @apply rounded-3xl border border-powder/70 bg-white/85 p-5 shadow-soft backdrop-blur-sm;
+  }
+  .card-cream {
+    @apply rounded-3xl bg-cream/70 p-5;
+  }
+  .label {
+    @apply mb-1.5 block text-sm font-bold text-navy;
+  }
+  .field {
+    @apply block min-h-[50px] w-full rounded-2xl border-2 border-powder bg-white px-4 py-2.5 text-navy placeholder:text-navy/40 focus:border-caramel focus:outline-none;
+  }
+  .field-error {
+    @apply mt-1.5 text-sm font-semibold text-burgundy;
+  }
+  .page-title {
+    @apply text-[28px] font-extrabold leading-tight tracking-tight text-navy;
+  }
+  .section-title {
+    @apply text-lg font-bold text-navy;
+  }
+  .chip {
+    @apply inline-flex min-h-[40px] items-center rounded-full border-2 border-powder bg-white px-4 text-sm font-bold text-navy transition;
+  }
+  .chip-active {
+    @apply border-navy bg-navy text-offwhite;
+  }
+  .heart-divider {
+    @apply flex items-center gap-3 text-burgundy;
+  }
+  .heart-divider::before,
+  .heart-divider::after {
+    content: '';
+    @apply h-px flex-1 bg-burgundy/40;
+  }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fade-up 260ms ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-up { animation: none !important; }
+}
+
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+.safe-top { padding-top: env(safe-area-inset-top); }
+
+/* Wydruk: czarno-biały, bez nawigacji i przycisków */
+@media print {
+  @page { size: A4; margin: 14mm 12mm; }
+  html, body { background: #fff !important; }
+  .app-bg { background: #fff !important; }
+  .card, .card-cream { box-shadow: none !important; backdrop-filter: none !important; background: #fff !important; border: 1px solid #bbb !important; break-inside: avoid; }
+  li { break-inside: avoid; }
+  h3 { break-after: avoid; }
+}
