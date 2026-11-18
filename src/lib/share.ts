@@ -24,10 +24,18 @@ export function deviceCanShareFiles(): boolean {
 export type ShareOutcome = 'shared' | 'cancelled' | 'unsupported' | 'error';
 
 /** „shared” oznacza tylko wybranie aplikacji – NIE jest potwierdzeniem wysłania wiadomości. */
+/** Safari na iPhonie/iPadzie (nie Chrome/Firefox/Edge na iOS, które działają poprawnie). */
+export function isIosSafari(): boolean {
+  const ua = navigator.userAgent || '';
+  const ios = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  return ios && /Safari/i.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS|GSA\//i.test(ua);
+}
+
 export async function shareFile(file: File, title: string): Promise<ShareOutcome> {
   if (!canShareFile(file)) return 'unsupported';
   try {
-    await navigator.share({ files: [file], title });
+    // Safari na iOS gubi załącznik w Poczcie, gdy razem z plikiem dostaje tytuł – udostępniamy wtedy sam plik.
+    await navigator.share(isIosSafari() ? { files: [file] } : { files: [file], title });
     return 'shared';
   } catch (e) {
     if (e instanceof DOMException && e.name === 'AbortError') return 'cancelled';
